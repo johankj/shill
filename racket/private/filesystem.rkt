@@ -53,6 +53,7 @@
 	 (struct-out stat))
 
 (require (only-in racket/base [append list-append])
+         net/url
          racket/contract
          shill/private/net
          shill/private/utils
@@ -255,12 +256,41 @@
                        (cons (pick-pipe-factory-rights cap) pipe-factory-rights)
                        socket-factory-rights)]
               [(socket-factory? cap)
-               (values node-rights
-                       pipe-factory-rights
-                       (cons (pick-socket-factory-rights cap) socket-factory-rights))])))
+               (let ([sfr (pick-socket-factory-rights cap)]
+                     [url (socket-factory-proxyurl cap)])
+                 (cond [(and (fifth sfr) (and (boolean? url) (not url)))
+                        (error 'socket-factory "Proxy URL required by default in socket-factory used for ~s, but none provided." (if (= (second sfr) 1) 'TCP 'UDP))]
+                       [(and (not (fifth sfr)) url)
+                         (error 'socket-factory "Proxy URL (~s) given to socket-factory used for ~s, but policy has +no-proxy." url (if (= (second sfr) 1) 'TCP 'UDP))]
+                       [else
+                        (values node-rights
+                                pipe-factory-rights
+                                (cons sfr socket-factory-rights))]
+                       ))])))
     (define files (cons file (filter-map (λ (x) (and (shill-node? x) (cap-to-desc x))) all-caps)))
     (define rights (cons file-rights (reverse node-rights)))
-    (rt:sandbox file stdin-desc stdout-desc stderr-desc files rights pipe-factory-rights socket-factory-rights strargs time))
+    (define tcp-socket-factory? (lambda (cap)
+                                  (= (second (pick-socket-factory-rights cap)) 1)))
+    (define udp-socket-factory? (lambda (cap)
+                                  (= (second (pick-socket-factory-rights cap)) 2)))
+    (define tcp-url (ormap (lambda (cap)
+                             (and (socket-factory? cap) (tcp-socket-factory? cap) (socket-factory-proxyurl cap)))
+                           all-caps))
+    (define dns-url (ormap (lambda (cap)
+                             (and (socket-factory? cap) (udp-socket-factory? cap) (socket-factory-proxyurl cap)))
+                           all-caps))
+    (define-values (proxy-host proxy-port)
+      (if tcp-url
+          (let ([url (string->url tcp-url)])
+            (values (url-host url) (or (url-port url) 0)))
+          (values #f 0)))
+    (define-values (dns-host dns-port)
+      (if dns-url
+          (let ([url (string->url dns-url)])
+            (values (url-host url) (or (url-port url) 0)))
+          (values #f 0)))
+
+    (rt:sandbox file stdin-desc stdout-desc stderr-desc files rights pipe-factory-rights socket-factory-rights proxy-host proxy-port dns-host dns-port strargs time))
   
   (define (close)
     (rt:close-node file))

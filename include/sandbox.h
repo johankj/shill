@@ -16,9 +16,10 @@ int shill_init(void);
 int shill_enter(void);
 int shill_debug(void);
 int shill_sandbox(int execfd, int stdin, int stdout, int stderr,
-		  int capfds[], struct shill_cap *caps[], int lim,
+                  int capfds[], struct shill_cap *caps[], int lim,
                   rlim_t timeout, int debug, char *const argv[],
                   uint64_t *netcaps, int netcapcount,
-                  struct shill_cap *pipefactory);
+                  struct shill_cap *pipefactory, char *const proxy_host, int proxy_port,
+                  char *const dns_host, int dns_port);
 
 #endif /* SANDBOX_H */

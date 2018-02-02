@@ -1,0 +1,30 @@
+#lang shill/ambient
+
+require shill/native;
+require "wget.cap";
+
+val wallet = create-wallet();
+populate-native-wallet(
+  wallet,
+	open-dir("/"),
+	"/usr/local/bin:/usr/bin:/bin",
+	"/libexec:/lib:/usr/local/lib:/usr/lib",
+	pipe-factory
+);
+
+val readonly = [
+    open-file("/etc/localtime") # wget
+  , open-dir("/usr/share/zoneinfo") # wget
+  , open-file("/etc/nsswitch.conf")
+  , open-file("/etc/resolv.conf")
+  , open-file("/etc/hosts")
+  , open-file("/etc/ssl/openssl.cnf")
+  , open-file("/etc/ssl/cert.pem")
+  , open-file("/usr/local/lib/charset.alias") # wget
+];
+
+val output = open-file("/usr/home/vagrant/wget-output");
+val proxy = "socks://10.0.2.2:9150";
+wget(wallet, socket-factory(proxy = proxy), socket-factory(), readonly,
+     # output = output,
+     stdin = stdin, stdout = stdout, stderr = stderr);

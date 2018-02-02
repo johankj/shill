@@ -75,7 +75,10 @@
    ;;; permissions (this is the keyword for providing permissions)
    PERMISSION-ITEM
    ;;; permission
-   PERMISSION))
+   PERMISSION
+   ;; proxy
+   NO-PROXY
+   ))
 
 (define-tokens 
   empty-punctuation-tokens 
@@ -273,7 +276,10 @@
          "+listen"
          "+accept"
          "+send"
-         "+recv")])
+         "+recv")]
+
+  [no-proxy
+   "+no-proxy"])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -390,6 +396,7 @@
    [family (token-FAMILY (string-drop-first lexeme))]
    [permission-item (token-PERMISSION-ITEM (string-drop-first lexeme))]
    [permission (token-PERMISSION (string-drop-first lexeme))] 
+   [no-proxy (token-NO-PROXY (string-drop-first lexeme))]
    
    ;;;; identifiers 
    [identifier (token-IDENTIFIER (string->symbol lexeme))]
@@ -465,7 +472,8 @@
          complex-pipe-factory-with-privilege
          family
          permission
-         permission-item)
+         permission-item
+         no-proxy)
     (syn-val lexeme 'hash-colon-keyword #f start-pos end-pos)]
    [string 
     (syn-val lexeme 'string #f start-pos end-pos)]
@@ -910,8 +918,11 @@
                                  `(,(b o  (key->keyword $1) 1 1) ,$3)])
     (top-socket-factory-privilege [(FAMILY expr)
                                    `(,(b o (key->keyword $1) 1 1) ,$2)]
-                                  [(PERMISSION OC permission-list CC) 
-                                   `(,(b o (key->keyword $1) 1 1) ,(b o `(,(b o `list 1 1) ,@$3) 3 3))])
+                                  [(PERMISSION OC permission-list CC)
+                                   `(,(b o (key->keyword $1) 1 1) ,(b o `(,(b o `list 1 1) ,@$3) 3 3))]
+                                  [(NO-PROXY)
+                                   ;; `(,(b o (key->keyword $1) 1 1) #t)])
+                                   `(,(b o (key->keyword "proxy") 1 1) #f)])
     (all-top-dir-privilege [(top-fs-common-privilege) $1]
                            [(top-file/dir-common-privilege) $1]
                            [(top-dir-privilege) $1])

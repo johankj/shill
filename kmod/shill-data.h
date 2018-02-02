@@ -39,6 +39,17 @@ struct shill_network_cap {
 
 LIST_HEAD(shill_network_cap_list, shill_network_cap);
 
+/* extra data for restoring socket information after proxying */
+struct shill_socket_original_data {
+  in_addr_t ip;
+  unsigned short port;
+  short nonblocking_flag;
+  struct socket *so;
+  LIST_ENTRY(shill_socket_original_data) ssod_list;
+};
+
+LIST_HEAD(shill_socket_original_data_list, shill_socket_original_data);
+
 /* session data */
 
 struct shill_session {
@@ -49,6 +60,11 @@ struct shill_session {
   struct shill_session *ss_parent;
   struct shill_network_cap_list ss_network_cap_list;
   struct shill_cap *ss_pipefactory_cap;
+  struct in_addr *proxy_host;
+  int proxy_port;
+  struct in_addr *dns_host;
+  int dns_port;
+  struct shill_socket_original_data_list ss_original_data_list;
 };
 
 #define SESSIONPTR(session) ((((uintptr_t)(session)) & 1) ? NULL : (session))

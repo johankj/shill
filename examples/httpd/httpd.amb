@@ -1,0 +1,33 @@
+#lang shill/ambient
+
+require shill/native;
+require "httpd.cap";
+
+val wallet = create-wallet();
+put(wallet,"extras",create-wallet());
+populate-native-wallet(wallet
+                      ,open-dir("/")
+                      ,"/usr/bin:/usr/local/sbin:/usr/local/libexec/apache22"
+                      ,"/libexec:/lib:/usr/lib:/usr/local/lib:/usr/local/lib/db5"
+                      ,pipe-factory
+                      ,lookups = [open-dir("/dev"),open-dir("/usr/local/lib")]
+                      ,extras = [["/usr/local/sbin/httpd",["/usr/local/libexec/apache22"]]]);
+
+val readonly = [open-file("/etc/localtime")
+               ,open-dir("/usr/share/zoneinfo")
+               ,open-file("/etc/nsswitch.conf")
+               ,open-file("/etc/resolv.conf")
+               ,open-file("/etc/hosts")
+               ,open-file("/etc/pwd.db")
+               ,open-file("/etc/spwd.db")
+               ,open-file("/etc/group")
+               ,open-dir("/usr/local/etc/apache22")
+               ,open-dir("/usr/local/www/apache22")];
+
+val logs = [open-file("/var/log/httpd-error.log"),
+            open-file("/var/log/httpd-access.log")];
+
+httpd(wallet,socket-factory(),socket-factory(),stdin,stdout,
+      open-dir("/usr/local/lib"),readonly,open-dir("/tmp"),logs,open-dir("/"),
+      open-dir("/dev"),open-file("/dev/null"),open-file("/dev/random"),
+      open-dir("/var/run"),pipe-factory);

@@ -1,0 +1,20 @@
+#lang shill/ambient
+
+require shill/native;
+require "run-all.cap";
+
+val wallet = create-wallet();
+populate-native-wallet(
+  wallet,
+  open-dir("/"),
+  "/usr/local/bin:/usr/bin:/bin:/usr/home/vagrant/shill:/usr/local/lib/firefox",
+  "/libexec:/lib:/usr/local/lib:/usr/lib",
+  pipe-factory
+);
+
+val socks = "socks://10.0.2.2:9150";
+val dns = "dns://10.0.2.2:9153";
+val local = socket-factory();
+val net = [socket-factory(proxy = socks), socket-factory(proxy = dns)];
+run(wallet, local, net, open-dir("/"), pipe-factory,
+    stdin = stdin, stdout = stdout, stderr = stderr);

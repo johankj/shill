@@ -1,3 +1,13 @@
 *~
 compiled
 parse-debug
+
+### macOS ###
+*.DS_Store
+.AppleDouble
+.LSOverride
+
+### Vagrant ###
+.vagrant/
+*.box
+

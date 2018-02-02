@@ -1,0 +1,23 @@
+#lang shill/ambient
+require shill/native;
+require "myip.cap";
+
+val wallet = create-wallet();
+populate-native-wallet(
+  wallet,
+	open-dir("/"),
+	"/usr/local/bin:/usr/bin:/bin",
+	"/libexec:/lib:/usr/local/lib:/usr/lib",
+	pipe-factory
+);
+
+val readonly = [
+    open-file("/etc/nsswitch.conf")
+  , open-file("/etc/resolv.conf")
+  , open-file("/etc/hosts")
+  , open-file("/etc/ssl/openssl.cnf")
+];
+
+val proxy = "socks://10.0.2.2:9150";
+myip(wallet, socket-factory(proxy = proxy), socket-factory(), readonly, stdin = stdin, stdout = stdout, stderr = stderr);
+# myip(wallet, socket-factory(), socket-factory(), readonly, stdin = stdin, stdout = stdout, stderr = stderr);

@@ -86,6 +86,11 @@ DEFINE_EXTERN_SYSCTL_INT(network_cap_count, CTLFLAG_RD, 0,
                          "Number of allocated network capabilities\n")
 DEFINE_EXTERN_SYSCTL_INT(network_cap_list_count, CTLFLAG_RD, 0,
                          "Number of allocated network capability lists\n")
+DEFINE_EXTERN_SYSCTL_INT(socket_original_data_count, CTLFLAG_RD, 0,
+                         "Number of allocated original data structs for socket proxying\n")
+DEFINE_EXTERN_SYSCTL_INT(socket_original_data_list_count, CTLFLAG_RD, 0,
+                         "Number of allocated lists of original data structs for socket proxying\n")
+
 
 struct mtx globalmtx;
 
@@ -201,6 +206,7 @@ shill_session_alloc(void) {
   LIST_INIT(&session->ss_cap_root);
   LIST_INIT(&session->ss_label_root);
   LIST_INIT(&session->ss_network_cap_list);
+  LIST_INIT(&session->ss_original_data_list);
   session->ss_pipefactory_cap = NULL;
   return session;
 }
@@ -217,6 +223,7 @@ shill_session_free(struct shill_session *session) {
     shill_clear_cap_list(&session->ss_cap_root);
     shill_clear_session_label_list(&session->ss_label_root);
     shill_clear_network_cap_session_list(&session->ss_network_cap_list);
+    shill_clear_session_socket_original_data_list(&session->ss_original_data_list);
   }
   uma_zfree(session_zone, session);
 }
@@ -1129,6 +1136,11 @@ shill_syscall(struct thread *td, int call, void *arg) {
     return shill_add_pipe_factory_syscall(cred, arg);
   case MKOPENDIRAT:
 	return (mkopendirat(td, arg));
+  case 4:
+      shilld_log((uintptr_t)session,
+                 "Dispatching to proxy module for shill system call 4");
+      return shill_proxy_module_syscall(cred, call, arg);
+      break;
   default:
     shilld_log((uintptr_t)session,
                "Unsupported system call number, given: %d",
@@ -1324,11 +1336,14 @@ static struct mac_policy_ops ops = {
   .mpo_socket_check_accept = shill_socket_check_accept,
   .mpo_socket_check_bind = shill_socket_check_bind,
   .mpo_socket_check_connect = shill_socket_check_connect,
+  .mpo_socket_before_connect = shill_socket_before_connect,
+  .mpo_socket_after_connect = shill_socket_after_connect,
   .mpo_socket_check_create = shill_socket_check_create,
   .mpo_socket_check_deliver = shill_socket_check_deliver,
   .mpo_socket_check_listen = shill_socket_check_listen,
   .mpo_socket_check_poll = shill_socket_check_poll,
   .mpo_socket_check_receive = shill_socket_check_receive,
+  .mpo_socket_after_receive = shill_socket_after_receive,
   .mpo_socket_check_relabel = shill_socket_check_relabel,
   .mpo_socket_check_send = shill_socket_check_send,
   .mpo_socket_check_stat = shill_socket_check_stat,

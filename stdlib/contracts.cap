@@ -4,6 +4,7 @@ provide {read-only-dir/c : contract?}
 	{read-only-file/c : contract?}
 	{read-only/c : contract?}
         {read-exec-only/c : contract?}
+        {dir-with-full-privileges/c : contract?}
         {create-with-full-privileges/c : contract?}
         {readable/c : contract?}
         {writeable/c : contract?}
@@ -26,7 +27,17 @@ provide {read-only-dir/c : contract?}
         {simple-wallet/c : +optional
                            {put : maybe/c(contract?),
                             get : maybe/c(contract?)}
-                         -> contract?};
+                         -> contract?}
+        {local-socket-factory/c : contract?}
+        {proxy-tcp-ipv4-socket-factory/c : contract?}
+        {proxy-udp-ipv4-socket-factory/c : contract?}
+        {no-proxy-tcp-ipv4-socket-factory/c : contract?}
+        {no-proxy-udp-ipv4-socket-factory/c : contract?}
+        {no-proxy-tcp-ipv6-socket-factory/c : contract?}
+        {no-proxy-udp-ipv6-socket-factory/c : contract?}
+        {no-proxy-ipv4-network/c : contract?}
+        {no-proxy-ipv6-network/c : contract?}
+        {proxy-ipv4-network/c : contract?};
 
 val read-only-dir/c = dir/c(+lookup,+stat,+read,+path,+read-symlink,+contents);
 val read-only-file/c = file/c(+stat,+read,+path);
@@ -34,6 +45,8 @@ val read-only/c = or/c(read-only-dir/c,read-only-file/c);
 
 val read-exec-only/c = or/c(file/c(+stat,+read,+path,+exec),
                            dir/c(+lookup,+stat,+read,+path,+exec,+read-symlink,+contents));
+
+val dir-with-full-privileges/c = dir/c(+path, +contents, +create-dir, +create-file, +add-link, +add-symlink, +read-symlink, +unlink-file, +unlink-symlink, +unlink-dir, +lookup, +link, +read, +write, +append, +exec, +stat, +close, +chroot, +chdir, +chflags, +chmod, +chown, +chtimes, +unlink, +rename);
 
 val create-with-full-privileges/c =
     dir/c(+unlink-dir, +unlink-file,
@@ -79,6 +92,63 @@ val wallet-keys/c = fun (puts = [], gets = [], put-others = false, get-others = 
 };
 
 val simple-wallet/c = fun (get = false, put = false) {
-  wallet-keys/c(put-others = if put then fun (k) put else false,
-                get-others = if get then fun (k) get else false)
+    wallet-keys/c(put-others = if put then fun (k) put else false,
+                  get-others = if get then fun (k) get else false)
 };
+
+val proxy-tcp-ipv4-socket-factory/c =
+    socket-factory/c(+address-family 2,
+                     +transfer-family 1,
+                     +permissions {+connect, +recv,+send,
+                                   +poll, +bind, +accept,
+                                   +listen});
+
+val proxy-udp-ipv4-socket-factory/c =
+    socket-factory/c(+address-family 2,
+                     +transfer-family 2,
+                     +permissions {+connect, +recv, +send, +poll});
+
+val no-proxy-tcp-ipv4-socket-factory/c =
+    socket-factory/c(+address-family 2,
+                     +transfer-family 1,
+                     +permissions {+connect, +recv, +send,
+                                   +poll, +bind, +accept,
+                                   +listen},
+                     +no-proxy);
+
+val no-proxy-udp-ipv4-socket-factory/c =
+    socket-factory/c(+address-family 2,
+                     +transfer-family 2,
+                     +permissions {+connect, +recv, +send, +poll},
+                     +no-proxy);
+
+val no-proxy-tcp-ipv6-socket-factory/c =
+    socket-factory/c(+address-family 28,
+                     +transfer-family 1,
+                     +permissions {+connect, +recv, +send,
+                                   +poll, +bind, +accept,
+                                   +listen},
+                     +no-proxy);
+
+val no-proxy-udp-ipv6-socket-factory/c =
+    socket-factory/c(+address-family 28,
+                     +transfer-family 2,
+                     +permissions {+connect, +recv, +send, +poll},
+                     +no-proxy);
+
+val local-socket-factory/c =
+    socket-factory/c(+address-family 1,
+                     +transfer-family 1,
+                     +permissions {+connect, +recv, +send,
+                                   +poll, +bind, +accept,
+                                   +listen},
+                     +no-proxy);
+
+val proxy-ipv4-network/c =
+    list/c(proxy-tcp-ipv4-socket-factory/c, proxy-udp-ipv4-socket-factory/c);
+
+val no-proxy-ipv4-network/c =
+    list/c(no-proxy-tcp-ipv4-socket-factory/c, no-proxy-udp-ipv4-socket-factory/c);
+
+val no-proxy-ipv6-network/c =
+    list/c(no-proxy-tcp-ipv6-socket-factory/c, no-proxy-udp-ipv6-socket-factory/c);

@@ -6,7 +6,11 @@ Vagrant.configure("2") do |config|
                   then "shill/freebsd-9.3-mate"
                   else "shill/freebsd-9.3"
                   end
+
+  config.vm.network "private_network", type: "dhcp"
   config.vm.synced_folder ".", "/vagrant", disabled: true
+  config.vm.synced_folder ".", "/home/vagrant/shill", type: "nfs"
+  config.vm.synced_folder "../ShillBSD", "/usr/src", type: "nfs"
 
   config.vm.provider "virtualbox" do |vb|
     vb.gui = ENV.has_key?("SHILL_GUI")
@@ -15,15 +19,9 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", inline: <<-SHELL
     pkg install -y racket git
-    cd /usr/src && rm -Rf *
-    fetch https://codeload.github.com/HarvardPL/ShillBSD/zip/release/9.3.0
-    unzip 9.3.0
-    mv ShillBSD-release-9.3.0/* .
-    rm -Rf 9.3.0 ShillBSD-release-9.3.0
   SHELL
 
   config.vm.provision "shell", privileged: false, inline: <<-SHELL
-    cd /home/vagrant && git clone https://github.com/HarvardPL/shill.git
     cd /home/vagrant/shill/racket && sudo raco link -i -n shill .
     cd /home/vagrant/shill/stdlib && sudo raco link -i -n shill .
     cd /home/vagrant/shill && make && sudo make install

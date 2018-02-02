@@ -1,0 +1,28 @@
+#lang shill/cap
+
+provide {
+  run : {
+    wallet : native-wallet/c,
+    ipc : local-socket-factory/c,
+    net : proxy-ipv4-network/c,
+    alldirs : dir-with-full-privileges/c,
+    pf : pipe-factory?
+  }
+  +optional {
+    stdin  : maybe/c(readable/c),
+    stdout : maybe/c(writeable/c),
+    stderr : maybe/c(writeable/c),
+    timeout : timeout/c
+  }
+  -> integer?
+};
+
+require shill/contracts shill/native;
+
+val run = fun (wallet, ipc, net, alldirs, pf, stdin = false, stdout = false, stderr = false, timeout = false) {
+  val args = vector->list(current-command-line-arguments());
+  val executable = pkg-native(car(args), wallet);
+  val extra = list-append([ipc, alldirs, pf], net);
+
+  executable(cdr(args), timeout = timeout, stdin = stdin, stdout = stdout, stderr = stderr, extra = extra);
+}

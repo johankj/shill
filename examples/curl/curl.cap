@@ -1,0 +1,33 @@
+#lang shill/cap
+
+provide {
+  curl : {
+    wallet : native-wallet/c,
+    tcp : socket-factory/c(+address-family 2,
+                           +transfer-family 1,
+                           +permissions { +connect, +recv, +send, +poll, +bind, +accept, +listen }),
+    udp : socket-factory/c(+address-family 2,
+                           +transfer-family 2,
+                           +permissions { +connect, +recv, +send, +poll }),
+    readonly : listof(read-only/c)
+  }
+  +optional {
+    output : file/c(+path, +write, +append),
+    stdin  : maybe/c(readable/c),
+    stdout : maybe/c(writeable/c),
+    stderr : maybe/c(writeable/c),
+    timeout : timeout/c
+  }
+  -> integer?
+};
+
+require shill/contracts shill/native;
+
+val curl = fun (wallet, tcp, udp, readonly, output = false, stdin = false, stdout = false, stderr = false, timeout = false) {
+  val executable = pkg-native("curl", wallet);
+
+  val extra = list-append([tcp, udp], readonly);
+  val args = vector->list(current-command-line-arguments());
+
+  executable(args, timeout = timeout, stdin = stdin, stdout = stdout, stderr = stderr, extra = extra);
+}

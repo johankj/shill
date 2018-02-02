@@ -1,0 +1,34 @@
+#lang shill/cap
+
+provide { httpd :
+          { wallet : native-wallet/c,
+            tcp : socket-factory/c(+address-family 2, +transfer-family 1,
+                                   +permissions { +recv, +send, +poll, +bind, +accept, +listen }),
+            udp : socket-factory/c(+address-family 2, +transfer-family 2,
+                                   +permissions { +recv, +send, +poll, +connect }),
+            sin : readable/c,                                 
+            out : writeable/c,
+            usr-local-lib-readlink : dir/c(+lookup with { +read-symlink }),
+            readonly : listof(read-only/c),
+            tmp : create-with-full-privileges/c,
+            logs : listof(writeable/c),
+            root-chdir : dir/c(+chdir),
+            dev : dir/c(+lookup, +read-symlink),          
+            null : writeable/c,
+            random : readable/c,
+            run : create-with-full-privileges/c,
+            pf : pipe-factory/c(+first with { +write, +append, +close },
+                                +second with { +read, +stat, +close }) }
+          -> integer? };
+
+require shill/native;
+require shill/contracts;
+require shill/io;
+
+val httpd = fun(wallet,tcp,udp,sin,out,liblink,readonly,
+                tmp,logs,root,dev,null,random,varrun,pf) {
+    run = pkg-native("httpd",wallet,"mod_deflate.so","mod_ssl.so");
+    run([],stdout = out, stderr = out, stdin = sin,
+        extra = list-append([tcp,udp,liblink,tmp,root,dev,null,random,varrun,pf]
+                           ,logs,readonly));
+};

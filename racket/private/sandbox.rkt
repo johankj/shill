@@ -121,7 +121,7 @@
 ;; expects, namely the address family, the socket type, and the permission
 ;; set. All of these values are represented as unsigned 64 bit integers.
 (define/match (socket-factory-cap->c-netcap cap)
-  [((list address-family socket-type _ permissions))
+  [((list address-family socket-type _ permissions _))
    (list address-family socket-type (permissions->bit-vector permissions))])
 (module+ test
   (check-equal? (socket-factory-cap->c-netcap '(1 1 () (send recv connect)))
@@ -178,7 +178,7 @@
   (let ([merged (foldl merge (set) (map flatten rights))])
     (if (empty? merged) #f (rights->shill_cap (set->list merged)))))
 
-(define (shill-sandbox prog stdin stdout stderr fds node-caps pipe-factory-caps socket-factory-caps args timeout)
+(define (shill-sandbox prog stdin stdout stderr fds node-caps pipe-factory-caps socket-factory-caps proxy-host proxy-port dns-host dns-port args timeout)
   (let* ([rights (map rights->shill_cap node-caps)]
          [c-netcaps (socket-factory-caps->c-netcaps socket-factory-caps)]
          [_fd_array (_array/list _node (length fds))]
@@ -188,6 +188,8 @@
                                _node _node _node _node _fd_array _shill_cap-pointer_array
                                _int _int64 _bool _string-pointer_array
                                _gcpointer _uint64 _shill_cap-pointer/null
+                               _string _int
+                               _string _int
                                ffi:-> _int)]
          [c-sandbox (get-ffi-obj "shill_sandbox" (ffi-lib "libshillrt") c-sandbox-type)]
          [lim (min (length fds) (length rights))]
@@ -199,7 +201,9 @@
                          (append args (list #f))
                          (list->cblock c-netcaps _uint64)
                          (length c-netcaps)
-                         pipefactory)])
+                         pipefactory
+                         proxy-host proxy-port
+                         dns-host dns-port)])
     (when (eq? ret -1)
       (error (saved-error)))
     ret))

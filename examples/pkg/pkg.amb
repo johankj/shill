@@ -1,0 +1,59 @@
+#lang shill/ambient
+
+require shill/native;
+require "pkg.cap";
+
+val wallet = create-wallet();
+populate-native-wallet(
+  wallet,
+  open-dir("/"),
+  "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/usr/local/lib",
+  "/libexec:/lib:/usr/local/lib:/usr/lib:/usr/lib/private", # Use `ldd' to figure out where the .so-files are located.
+  pipe-factory
+);
+
+val pkgconfigdirs = [
+    open-dir("/etc/pkg") # Read-only access to FreeBSD.conf-file
+  , open-dir("/var/db/pkg") # Read and write to repo-FreeBSD.sqlite and local.sqlite (for `info` cmd) dbs and read access to FreeBSD.meta-file.
+  , open-dir("/usr/local/sbin") # +exec-privileges for calling /usr/local/sbin/pkg
+];
+
+val tmpdir = open-dir("/tmp"); # +create-file for temp download
+
+# val execfile = open-file("/usr/local/sbin/pkg");
+
+val readonly = [
+  # Default configuration file
+    open-file("/usr/local/etc/pkg.conf")
+  # Date and time
+  , open-file("/etc/localtime")
+  , open-file("/usr/share/zoneinfo/posixrules")
+  , open-file("/usr/share/zoneinfo/UTC")
+  # Network
+  , open-file("/etc/nsswitch.conf")
+  , open-file("/etc/resolv.conf")
+  , open-file("/etc/hosts")
+
+  , open-file("/bin/sh") # Required for parsing configuration file
+
+  # Other files
+  , open-file("/etc/libmap.conf")
+  , open-file("/etc/services")
+  # , open-dir("/usr/lib/compat")
+  # , open-dir("/usr/local/lib/gcc49")
+  # , open-dir("/usr/local/lib/perl5/5.20/mach/CORE")
+  # , open-dir("/usr/local/llvm37/lib")
+
+  # , open-file("/usr/local/sbin/pkg")
+  # , open-file("/usr/sbin/pkg")
+  # , open-file("/var/db/pkg/FreeBSD.meta")
+  # , open-file("/var/db/pkg/repo-FreeBSD.sqlite")
+];
+
+val proxy = "socks://10.0.2.2:9150";
+pkg(wallet, socket-factory(proxy = proxy), socket-factory(),
+     pkgconfigdirs,
+     tmpdir,
+     # execfile,
+     readonly,
+     stdin = stdin, stdout = stdout, stderr = stderr);

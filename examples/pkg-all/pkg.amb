@@ -1,0 +1,19 @@
+#lang shill/ambient
+
+require shill/native;
+require "pkg.cap";
+
+val wallet = create-wallet();
+populate-native-wallet(
+  wallet,
+  open-dir("/"),
+  "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/usr/local/lib",
+  "/libexec:/lib:/usr/local/lib:/usr/lib:/usr/lib/private", # Use `ldd' to figure out where the .so-files are located.
+  pipe-factory
+);
+
+val socks = "socks://10.0.2.2:9150";
+val dns = "dns://10.0.2.2:9153";
+pkg(wallet, socket-factory(proxy = socks), socket-factory(proxy = dns),
+     open-dir("/"),
+     stdin = stdin, stdout = stdout, stderr = stderr);

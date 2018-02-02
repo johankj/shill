@@ -12,8 +12,18 @@ DECLARE_FREE(shill_network_cap, network_cap_zone, network_cap_count)
 DECLARE_ALLOC(shill_network_cap_list, network_cap_list_zone, network_cap_list_count)
 DECLARE_FREE(shill_network_cap_list, network_cap_list_zone, network_cap_list_count)
 
+DECLARE_ALLOC(shill_socket_original_data, socket_original_data_zone, socket_original_data_count)
+DECLARE_FREE(shill_socket_original_data, socket_original_data_zone, socket_original_data_count)
+DECLARE_ALLOC(shill_socket_original_data_list, socket_original_data_list_zone, socket_original_data_list_count)
+DECLARE_FREE(shill_socket_original_data_list, socket_original_data_list_zone, socket_original_data_list_count)
+
+MALLOC_DECLARE(M_SHILLPROXYADDR);
+
 void
 shill_clear_network_cap_session_list(struct shill_network_cap_list *list);
+
+void
+shill_clear_session_socket_original_data_list(struct shill_socket_original_data_list *list);
 
 void
 shill_socket_module_init(void);
@@ -27,6 +37,11 @@ int
 shill_socket_module_syscall(struct ucred *cred,
                             int call,
                             void *user_arg);
+
+int
+shill_proxy_module_syscall(struct ucred *cred,
+                           int call,
+                           void *user_arg);
 
 /* Other */
 /*
@@ -77,6 +92,30 @@ shill_socket_check_connect(struct ucred *cred,
                            struct sockaddr *sa);
 
 int
+shill_socket_before_connect(struct thread *td,
+                            struct socket *so,
+                            struct label *solabel,
+                            struct sockaddr *sa);
+
+int
+socket_send(struct thread* td,
+            struct socket* so,
+            unsigned char *buf,
+            int len);
+
+int
+socket_receive(struct thread* td,
+               struct socket* so,
+               unsigned char *buf,
+               int len);
+
+int
+shill_socket_after_connect(struct thread *td,
+                           struct socket *so,
+                           struct label *solabel,
+                           struct sockaddr *sa);
+
+int
 shill_socket_check_create(struct ucred *cred,
                           int domain,
                           int type,
@@ -102,6 +141,12 @@ int
 shill_socket_check_receive(struct ucred *cred,
                            struct socket *so,
                            struct label *solabel);
+
+int
+shill_socket_after_receive(struct ucred *cred,
+                           struct socket *so,
+                           struct msghdr *mp,
+                           struct sockaddr *fromsa);
 
 int
 shill_socket_check_send(struct ucred *cred,

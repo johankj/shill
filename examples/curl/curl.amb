@@ -1,0 +1,27 @@
+#lang shill/ambient
+
+require shill/native;
+require "curl.cap";
+
+val wallet = create-wallet();
+populate-native-wallet(
+  wallet,
+	open-dir("/"),
+	"/usr/local/bin:/usr/bin:/bin",
+	"/libexec:/lib:/usr/local/lib:/usr/lib",
+	pipe-factory
+);
+
+val readonly = [
+    open-file("/etc/nsswitch.conf")
+  , open-file("/etc/resolv.conf")
+  , open-file("/etc/hosts")
+  , open-file("/etc/ssl/openssl.cnf")
+];
+
+val output = open-file("/usr/home/vagrant/curl-output");
+val socks = "socks://10.0.2.2:9150";
+val dns = "dns://10.0.2.2:9153";
+curl(wallet, socket-factory(proxy = socks), socket-factory(proxy = dns), readonly,
+     # output = output,
+     stdin = stdin, stdout = stdout, stderr = stderr);

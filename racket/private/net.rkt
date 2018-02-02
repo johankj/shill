@@ -5,7 +5,8 @@
 (provide (rename-out [make-socket-factory socket-factory])
          socket-factory?
          socket-factory/c
-         socket-factory-proxy)
+         socket-factory-proxy
+         socket-factory-proxyurl)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -31,9 +32,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(struct socket-factory ([null #:mutable]))
+(struct socket-factory ([null #:mutable] proxyurl)
+  #:guard (λ (null proxyurl name)
+            (unless (or (and (boolean? proxyurl) (not proxyurl)) (string? proxyurl))
+              (raise-argument-error 'socket-factory "string?" proxyurl))
+            (values null proxyurl)))
 
-(define (make-socket-factory) (socket-factory '()))
+(define (make-socket-factory #:proxy [proxy #f]) (socket-factory '() proxy))
 
 ;; a Socket-factory-poxy is (socket-factory-proxy Net-full-details Param[Socket-factory-proxy]) 
 (struct socket-factory-proxy (full-details param)
@@ -64,12 +69,13 @@
                              new-param))))))
 
 
-(define (socket-factory/c 
+(define (socket-factory/c
          #:address-family [af #f]
          #:transfer-family [tf #f]
-         #:permissions [p empty])
-  (socket-factory-proxy (list af tf empty p) #f))
-  
+         #:permissions [p empty]
+         #:proxy [proxy #t])
+  (socket-factory-proxy (list af tf empty p proxy) #f))
+
 (define (compatible? new-details old-details)
   (and (compatible-address-family (first new-details) (first old-details))
        (compatible-transfer-family (second new-details) (second old-details))

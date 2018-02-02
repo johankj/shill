@@ -12,6 +12,11 @@
 #include <sys/syscall.h>
 #include <sys/wait.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "message.h"
 #include "sandbox.h"
 
@@ -109,7 +114,8 @@ int shill_sandbox(int execfd, int stdin, int stdout, int stderr,
                   int capfds[], struct shill_cap *caps[], int lim,
                   rlim_t timeout, int debug, char *const argv[],
                   uint64_t *netcaps, int netcapcount,
-                  struct shill_cap *pipefactory) {
+                  struct shill_cap *pipefactory, char *const proxy_host, int proxy_port,
+                  char *const dns_host, int dns_port) {
   pid_t cpid;
 
   if (lim < 0) {
@@ -131,7 +137,7 @@ int shill_sandbox(int execfd, int stdin, int stdout, int stderr,
       err = shill_grant(capfds[i], caps[i]);
       if (0 != err) {
         perror("shill_grant");
-	exit(err);
+        exit(err);
       }
     }
 
@@ -152,6 +158,39 @@ int shill_sandbox(int execfd, int stdin, int stdout, int stderr,
         exit(err);
       }
     }
+
+    if (proxy_host || dns_host) {
+      struct in_addr proxy_addr = {0};
+      if (proxy_host) {
+        if (inet_aton(proxy_host, &proxy_addr) == 0) {
+          printf("shilld: Invalid proxy address\n");
+          exit(1);
+        }
+      }
+      struct in_addr dns_addr = {0};
+      if (dns_host) {
+        if (inet_aton(dns_host, &dns_addr) == 0) {
+          printf("shilld: Invalid dns address\n");
+          exit(1);
+        }
+      }
+
+      uint64_t proxy_address[4] = { (uint64_t) proxy_addr.s_addr, proxy_port,
+                                    (uint64_t) dns_addr.s_addr, dns_port };
+      err = mac_syscall("shill", 4, proxy_address);
+      if (err != 0) {
+        printf("couldn't configure proxy_address { proxy_host := '%s', proxy_port := %i, "
+               "dns_host := '%s', dns_port := %i }, "
+               "cannot continue with test\n",
+               proxy_host, proxy_port,
+               dns_host, dns_port);
+     	  printf("  mac_syscall returned %d\n", err);
+     	  printf("  errno %d\n", errno);
+     	  perror("  mac_syscall:");
+     	  exit(err);
+      }
+    }
+
 
     if (pipefactory != NULL) {
       err = shill_grant_pipefactory(pipefactory);
@@ -214,9 +253,26 @@ int shill_sandbox(int execfd, int stdin, int stdout, int stderr,
       setrlimit(RLIMIT_CPU, &rlim);
     }
 
+    if (proxy_host) {
+        printf("proxy-host: '%s'\n", proxy_host);
+        printf("proxy-port: %i\n", proxy_port);
+    } else {
+        printf("proxy-address: #f\n");
+    }
+    if (dns_host) {
+      printf("dns-host: '%s'\n", dns_host);
+      printf("dns-port: %i\n", dns_port);
+    } else {
+      printf("dns-address: #f\n");
+    }
+
+
+    /* setenv("LD_PRELOAD", "/usr/local/lib/socket_hook.so", 1); */
+    /* char* envp[] = {"LD_PRELOAD=/usr/local/lib/socket_hook.so", NULL}; */
+    /* err = fexecve(3, argv, envp); */
     // returns only on failure
     err = fexecve(3, argv, environ);
-    perror("fexecve");
+    perror("shill: fexecve");
     exit(err);
   } else {
     // parent
